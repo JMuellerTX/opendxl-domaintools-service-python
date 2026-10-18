@@ -116,6 +116,29 @@ class DomainToolsRequestCallbackTest(unittest.TestCase):
         self.assertEqual("ServiceException: Not authorized",
                          MessageUtils.decode(response.error_message))
 
+    def test_api_key_redacted_and_non_dict_payload_rejected(self):
+        api = MagicMock()
+        api.whois.side_effect = RuntimeError("Failed for test-api-key")
+        app = self._create_app(api)
+        app.api_key = "test-api-key"
+        callback = DomainToolsRequestCallback(app, "whois", ["query"])
+
+        response = self._run_request(callback, {"query": "example.local"})
+        self.assertEqual(Message.MESSAGE_TYPE_ERROR, response.message_type)
+        decoded_err = MessageUtils.decode(response.error_message)
+        self.assertNotIn("test-api-key", decoded_err)
+        self.assertIn("<redacted>", decoded_err)
+
+
+        app.client.send_response.reset_mock()
+        list_req = Request("/opendxl-domaintools/service/domaintools/whois")
+        list_req.payload = b'["not", "a", "dict"]'
+        callback.on_request(list_req)
+        list_res = app.client.send_response.call_args[0][0]
+        self.assertEqual(Message.MESSAGE_TYPE_ERROR, list_res.message_type)
+        self.assertIn("JSON object", MessageUtils.decode(list_res.error_message))
+
 
 if __name__ == "__main__":
     unittest.main()
+

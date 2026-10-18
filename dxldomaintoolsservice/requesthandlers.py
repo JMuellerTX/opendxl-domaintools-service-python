@@ -26,6 +26,16 @@ class DomainToolsRequestCallback(RequestCallback):
         self._func_name = func_name
         self._required_params = required_params
 
+    def _redact(self, message):
+        if not message:
+            return message
+        text = str(message)
+        for attr in ("api_key", "_api_key"):
+            key_val = getattr(self._app, attr, None)
+            if isinstance(key_val, str) and key_val:
+                text = text.replace(key_val, "<redacted>")
+        return text
+
     def on_request(self, request):
         """
         Invoked when a request message is received.
@@ -42,6 +52,8 @@ class DomainToolsRequestCallback(RequestCallback):
 
             request_dict = MessageUtils.json_payload_to_dict(request) \
                 if request.payload else {}
+            if not isinstance(request_dict, dict):
+                raise ValueError("Request payload must be a JSON object")
 
             # Ensure required parameters are present
             if self._required_params:
@@ -70,16 +82,17 @@ class DomainToolsRequestCallback(RequestCallback):
                 MessageUtils.encode_payload(res, response_data)
 
         except ServiceException as ex:
-            logger.exception("Error handling request")
-            msg = "%s: %s" % (ex.__class__.__name__, ex.reason)
+            msg = self._redact("%s: %s" % (ex.__class__.__name__, ex.reason))
+            logger.error("Error handling request: %s", msg)
             res = ErrorResponse(request, error_message=MessageUtils.encode(msg))
 
         except Exception as ex:
-            logger.exception("Error handling request")
-            msg = str(ex)
+            msg = self._redact(str(ex))
             if not msg:
                 msg = ex.__class__.__name__
+            logger.error("Error handling request: %s", msg)
             res = ErrorResponse(request, error_message=MessageUtils.encode(msg))
 
         # Send response
         self._app.client.send_response(res)
+

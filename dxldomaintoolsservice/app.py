@@ -54,7 +54,17 @@ class DomainToolsService(Application):
         return self._api
 
     @property
+    def api_key(self):
+        """
+        Returns the DomainTools API key
+
+        :return: The DomainTools API key
+        """
+        return self._api_key
+
+    @property
     def client(self):
+
         """
         The DXL client used by the application to communicate with the DXL
         fabric
