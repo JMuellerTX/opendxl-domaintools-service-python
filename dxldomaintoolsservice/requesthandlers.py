@@ -52,10 +52,10 @@ class DomainToolsRequestCallback(RequestCallback):
 
             if "format" not in request_dict:
                 request_dict["format"] = "json"
-            elif request_dict["format"] not in ("json", "xml"):
+            elif request_dict["format"] not in ("json", "xml", "html"):
                 raise Exception("Unsupported format requested: '{}'. {}".format(
                     request_dict["format"],
-                    "Only 'json' and 'xml' are supported."))
+                    "Only 'json', 'xml', and 'html' are supported."))
 
             # Invoke DomainTools API via client
             dt_response = \
